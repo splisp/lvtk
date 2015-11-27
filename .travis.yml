@@ -1,0 +1,8 @@
+# before_install:
+#  - 
+
+compiler:
+  - gcc
+  - clang
+
+script: ./waf configure build
