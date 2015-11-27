@@ -1,5 +1,8 @@
-# before_install:
-#  - 
+addons:
+  apt:
+    packages:
+      - libboost-all-dev
+      - lv2-dev
 
 compiler:
   - gcc
