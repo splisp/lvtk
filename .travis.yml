@@ -4,6 +4,11 @@ addons:
       - libboost-all-dev
       - lv2-dev
 
+sudo: required
+
+before_install:
+  - sudo apt-get install -y lv2-dev
+
 compiler:
   - gcc
   - clang
