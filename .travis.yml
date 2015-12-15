@@ -1,8 +1,7 @@
 addons:
   apt:
     packages:
-      - libboost-all-dev
-      - lv2-dev
+      - libasound2-dev
 
 sudo: required
 
