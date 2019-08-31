@@ -1,11 +1,35 @@
 #!/usr/bin/env python
 
-import os, re
+import os, re, sys
 
 buildme = not bld.env.TOOLS_DISABLED and not bld.env.EXAMPLES_DISABLED
 builduis = bld.env.BUILD_EXAMPLE_UIS
 
 if buildme:
+	pugl = bld (
+		features = 'c cstlib',
+		includes = [ '../libs/pugl' ],
+		source = [ '../libs/pugl/pugl/detail/implementation.c' ],
+		cflags =[ '-fPIC', '-fvisibility=hidden', '-Wno-deprecated-declarations' ],
+		name = 'PUGL',
+		target = 'pugl_lvtk'
+	)
+	uitype = None
+	if sys.platform == 'darwin':
+		uitype = 'CocoaUI'
+		pugl.source.append ('../libs/pugl/pugl/detail/mac.m')
+		pugl.source.append ('../libs/pugl/pugl/detail/mac_gl.m')
+	elif sys.platform == 'windows':
+		uitype = 'Windows'
+		pugl.source.append ('../libs/pugl/pugl/detail/win.c')
+		pugl.source.append ('../libs/pugl/pugl/detail/win_gl.c')
+	else:
+		uitype = 'X11UI'
+		pugl.source.append ('../libs/pugl/pugl/detail/x11.c')
+		pugl.source.append ('../libs/pugl/pugl/detail/x11_gl.c')
+
+	bld.add_group()
+
 	examples = [ "volume" ]
 	first_plugin = True
 
@@ -14,7 +38,8 @@ if buildme:
 	module_pat = re.sub('^lib', '', bld.env.cxxshlib_PATTERN)
 	module_ext = module_pat[module_pat.rfind('.'):]
 	plugin_env = bld.env.derive()
-	plugin_env.cxxshlib_PATTERN = module_pat
+	ui_env     = bld.env.derive()
+	plugin_env.cxxshlib_PATTERN = ui_env.cxxshlib_PATTERN = module_pat
 
 	for slug in examples:
 		if first_plugin:
@@ -24,22 +49,39 @@ if buildme:
 				source		= 'manifest.ttl.in',
 				target		= '%s/manifest.ttl' % bundle,
 				LIB_EXT		= module_ext,
+				UI_TYPE		= uitype,
 				install_path = install_dir
 			)
 
 		bld (
 			features	= 'subst',
-			source		= '%s.ttl' % slug,
+			source		= '%s.ttl.in' % slug,
 			target		= '%s/%s.ttl' % (bundle, slug),
-			install_path = install_dir
+			install_path = install_dir,
+			UI_TYPE		= uitype
 		)
 
 		plugin = bld.shlib (
 			name          = slug,
 			target        = '%s/%s' % (bundle, slug),
 			source        = "%s.cpp" % slug,
-			includes      = [],
+			includes      = [ ],
 			use           = [ 'LV2' ],
 			install_path  = install_dir,
-			env			  = plugin_env
+			env			  = plugin_env,
 		)
+
+		ui = bld.shlib (
+			name          = '%s_ui' % slug,
+			target        = '%s/%s_ui' % (bundle, slug),
+			source        = "%s_ui.cpp" % slug,
+			includes      = [ '../libs/nuklear',
+							  '../libs/pugl' ],
+			use           = [ 'LV2', 'PUGL' ],
+			install_path  = install_dir,
+			env			  = ui_env,
+		)
+
+		if sys.platform == 'darwin':
+			ui.use.append ('COCOA')
+			ui.use.append ('OPEN_GL')

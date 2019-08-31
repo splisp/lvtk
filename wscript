@@ -18,6 +18,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import sys, os
 from subprocess import call
+from waflib import TaskGen
 from waflib.extras import autowaf as autowaf
 
 LVTK_VERSION='2.0.0'
@@ -58,6 +59,10 @@ def configure (conf):
     conf.define ("LVTK_MICRO_VERSION", LVTK_MICRO_VERSION)
     conf.define ("LVTK_EXTRA_VERSION", LVTK_EXTRA_VERSION)
     conf.write_config_header ('version.h')
+
+    # OSX framework useflags
+    conf.env.FRAMEWORK_COCOA   = 'Cocoa'
+    conf.env.FRAMEWORK_OPEN_GL = 'OpenGL'
 
     autowaf.set_modern_cxx_flags (conf, True)
     conf.env.append_unique ('CFLAGS', ['-fvisibility=hidden'])
@@ -145,3 +150,11 @@ def dist(ctx):
     ctx.excl = ' **/.waf-1* **/.waf-2* **/*~ **/*.pyc **/*.swp **/.lock-w*'
     ctx.excl += ' **/.gitignore **/.gitmodules **/.git dist build **/.DS_Store'
     ctx.excl += ' **/.vscode **/.travis.yml'
+
+# Alias .m files to be compiled like .c files, gcc will do the right thing.
+@TaskGen.extension('.m')
+def m_hook(self, node):
+    return self.create_compiled_task('c', node)
+@TaskGen.extension('.mm')
+def m_hook(self, node):
+    return self.create_compiled_task('cxx', node)

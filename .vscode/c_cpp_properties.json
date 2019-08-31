@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}",
                 "${workspaceFolder}/examples",
+                "${workspaceFolder}/libs/pugl",
                 "/usr/local/include/juce-5"
             ],
             "defines": [],

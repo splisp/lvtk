@@ -58,3 +58,6 @@
 			rdf:value -10.0
 		] ;
 	] .
+
+<http://lvtoolkit.org/plugins/volume/ui>
+	a ui:@UI_TYPE@ .
