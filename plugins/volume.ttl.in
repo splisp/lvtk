@@ -60,4 +60,6 @@
 	] .
 
 <http://lvtoolkit.org/plugins/volume/ui>
-	a ui:@UI_TYPE@ .
+	a ui:@UI_TYPE@ ;
+	lv2:requiredFeature ui:idleInterface ;
+	lv2:extensionData ui:idleInterface .
