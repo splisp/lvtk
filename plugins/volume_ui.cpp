@@ -76,19 +76,48 @@ public:
     }
 
     void expose (struct nk_context* ctx) {
-        std::clog << "expose()" << std::endl;
+        #if 0
+        if (nk_begin(ctx, "Show", nk_rect(50, 50, 220, 220),0))
+        {
+        nk_layout_row_static(ctx, 30, 80, 1);
+        if (nk_button_label(ctx, "button")) {
+            /* event handling */
+        }
+        enum { EASY, HARD };
+
+        /* fixed widget window ratio width */
+        nk_layout_row_dynamic(ctx, 30, 2);
+        if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
+        if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
+
+        /* custom widget pixel width */
+        nk_layout_row_begin(ctx, NK_STATIC, 30, 2);
+        {
+            nk_layout_row_push(ctx, 50);
+            nk_label(ctx, "Volume:", NK_TEXT_LEFT);
+            nk_layout_row_push(ctx, 110);
+            nk_slider_float(ctx, 0, &value, 1.0f, 0.1f);
+        }
+        nk_layout_row_end(ctx);
+        #else
+        // std::clog << "expose()" << std::endl;
+        puglGetSize (nuke.view, &nuke.width, &nuke.height);
         if (nk_begin (ctx, "VolumeUI", nk_rect (0, 0, nuke.width, nuke.height), 0))
         {   
+            // std::clog << nuke.width << "x" << nuke.height << std::endl;
             nk_layout_row_static (ctx, 30, 80, 1);
             if (nk_button_label (ctx, "Button"))
                 fprintf (stdout, "Button Pressed\n");
         }
+        #endif
         
         nk_end (ctx);
     }
 
 private:
     nk_pugl nuke;
+            int op = 0;
+        float value = 0;
     static void _expose (pugl_handle_t handle, struct nk_context* ctx) {
         (static_cast<VolumeUI*> (handle))->expose (ctx);
     }

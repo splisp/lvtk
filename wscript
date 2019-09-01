@@ -63,6 +63,7 @@ def configure (conf):
     # OSX framework useflags
     conf.env.FRAMEWORK_COCOA   = 'Cocoa'
     conf.env.FRAMEWORK_OPEN_GL = 'OpenGL'
+    conf.env.FRAMEWORK_QUARTZ_CORE = 'QuartzCore'
 
     autowaf.set_modern_cxx_flags (conf, True)
     conf.env.append_unique ('CFLAGS', ['-fvisibility=hidden'])

@@ -106,7 +106,7 @@ nk_pugl_device_upload_atlas (nk_pugl* pugl, const void *image, int width, int he
 }
 
 NK_INTERN void
-nk_pugl_render_begin(uint32_t width, uint32_t height)
+nk_pugl_render_begin(int32_t width, int32_t height)
 {
     glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_TRANSFORM_BIT);
     glDisable (GL_CULL_FACE);
@@ -137,14 +137,12 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
 {
     nk_pugl* pugl = (nk_pugl*) puglGetHandle (view);
     pugl_device_t *dev = &pugl->dev;
-    int width, height;
-    puglGetSize (view, &width, &height);
 
-    glViewport (0, 0, width, height);
     glClear (GL_COLOR_BUFFER_BIT);
     glClearColor (0.1f, 0.18f, 0.24f, 1.0f);
 
-    nk_pugl_render_begin (width, height);
+    // printf("nk_pugl_render %dx%d\n", pugl->width, pugl->height);
+    nk_pugl_render_begin (pugl->width, pugl->height);
     
     {
         GLsizei vs = sizeof(struct nk_pugl_vertex);
@@ -181,8 +179,6 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
 		nk_buffer_clear(&dev->cmds);
 		nk_buffer_clear(&dev->vbuf);
 		nk_buffer_clear(&dev->ebuf);
-		// nk_draw_list_clear(&pugl->ctx.draw_list);
-
         nk_convert(&pugl->ctx, &dev->cmds, &dev->vbuf, &dev->ebuf, &config);
 
         /* setup vertex buffer pointer */
@@ -195,11 +191,12 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
         offset = (const nk_draw_index*) nk_buffer_memory_const (&dev->ebuf);
         nk_draw_foreach(cmd, &pugl->ctx, &dev->cmds)
         {
-            if (!cmd->elem_count) continue;
+            if (! cmd->elem_count) 
+                continue;
             glBindTexture(GL_TEXTURE_2D, (GLuint)cmd->texture.id);
             glScissor(
                 (GLint)(cmd->clip_rect.x),
-                (GLint)((height - (GLint)(cmd->clip_rect.y + cmd->clip_rect.h))),
+                (GLint)((pugl->height - (GLint)(cmd->clip_rect.y + cmd->clip_rect.h))),
                 (GLint)(cmd->clip_rect.w),
                 (GLint)(cmd->clip_rect.h));
             glDrawElements(GL_TRIANGLES, (GLsizei)cmd->elem_count, GL_UNSIGNED_SHORT, offset);
@@ -273,8 +270,9 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
 
         case PUGL_CONFIGURE: {
             const PuglEventConfigure* ev = (const PuglEventConfigure*)event;
+            pugl->width = (int) ev->width;
+            pugl->height = (int) ev->height;
             // printf ("x=%d y=%d w=%d h=%d\n", (int)ev->x, (int)ev->y, (int)ev->width, (int)ev->height);
-            // puglPostRedisplay (self->view);
         } break;
 
         case PUGL_EXPOSE: {
@@ -291,8 +289,6 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
                             NK_PUGL_MAX_ELEMENT_BUFFER);
             
             nk_input_begin (&pugl->ctx);
-
-            printf("PUGL_EXPOSE\n");
         } break;
 
         case PUGL_CLOSE: {
@@ -313,7 +309,7 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
             /* Mouse motion handler */
             PuglEventMotion* ev = (PuglEventMotion*) event;
             const int x = ev->x, y = ev->y;
-            printf("%dx%d\n", x, y);
+            // printf("%dx%d\n", x, y);
             nk_input_motion (ctx, x, y);
             if (ctx->input.mouse.grabbed) {
                 ctx->input.mouse.pos.x = ctx->input.mouse.prev.x;
@@ -357,7 +353,7 @@ nk_pugl_init (nk_pugl* self)
     puglInitWindowHint (self->view, PUGL_ALPHA_BITS, 8);
     puglInitWindowHint (self->view, PUGL_DEPTH_BITS, 32);
     puglInitWindowHint (self->view, PUGL_STENCIL_BITS, 8);
-    puglInitWindowHint (self->view, PUGL_SAMPLES, 4);
+    puglInitWindowHint (self->view, PUGL_SAMPLES, 8);
     puglInitWindowHint (self->view, PUGL_DOUBLE_BUFFER, PUGL_TRUE);
     puglInitWindowHint (self->view, PUGL_IGNORE_KEY_REPEAT, PUGL_FALSE);
     puglInitWindowHint (self->view, PUGL_RESIZABLE, PUGL_TRUE);

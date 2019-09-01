@@ -85,3 +85,4 @@ if buildme:
 		if sys.platform == 'darwin':
 			ui.use.append ('COCOA')
 			ui.use.append ('OPEN_GL')
+			ui.use.append ('QUARTZ_CORE')
