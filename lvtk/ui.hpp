@@ -176,7 +176,7 @@ public:
         It is ok to create your widget here, but make sure
         that it only gets allocated once. 
     */
-    LV2UI_Widget get_widget() { return nullptr; }
+    LV2UI_Widget widget() { return nullptr; }
 
     /** Clean up (optional)
          
@@ -255,7 +255,7 @@ private:
             }
         }
 
-        *widget = instance->get_widget();
+        *widget = instance->widget();
         return static_cast<LV2UI_Handle> (instance.release());
     }
 
