@@ -313,6 +313,7 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
             /* Mouse motion handler */
             PuglEventMotion* ev = (PuglEventMotion*) event;
             const int x = ev->x, y = ev->y;
+            printf("%dx%d\n", x, y);
             nk_input_motion (ctx, x, y);
             if (ctx->input.mouse.grabbed) {
                 ctx->input.mouse.pos.x = ctx->input.mouse.prev.x;
@@ -347,7 +348,7 @@ nk_pugl_init (nk_pugl* self)
     puglInitWindowClass (self->view, "NuklearTest");
     puglInitWindowSize (self->view, self->width, self->height);
     puglInitWindowMinSize (self->view, 10, 10);
-    
+
     puglInitWindowHint (self->view, PUGL_CONTEXT_VERSION_MAJOR, 2);
     puglInitWindowHint (self->view, PUGL_CONTEXT_VERSION_MINOR, 2);
     puglInitWindowHint (self->view, PUGL_RED_BITS, 8);
