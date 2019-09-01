@@ -23,25 +23,25 @@
   extern "C" {
 #endif
 
-typedef void* pugl_handle_t;
+typedef void* nk_pugl_handle;
 
-typedef struct nk_pugl_vertex {
+typedef struct _nk_pugl_vertex {
     float position[2];
     float uv[2];
     nk_byte col[4];
-} pugl_vertex_t;
+} nk_pugl_vertex;
 
-typedef struct nk_pugl_device {
+typedef struct _nk_pugl_device {
     struct nk_buffer cmds;
     struct nk_buffer ebuf;
     struct nk_buffer vbuf;
     struct nk_draw_null_texture null;
     GLuint font_tex;
-} pugl_device_t;
+} nk_pugl_device;
 
 typedef struct _nk_pugl {
     struct nk_context ctx;
-    pugl_device_t dev;
+    nk_pugl_device dev;
     struct nk_font_atlas atlas;
     
     long last_button_click;
@@ -50,15 +50,16 @@ typedef struct _nk_pugl {
     int width;
     int height;
 
-    pugl_handle_t handle;
-    void (*close)(pugl_handle_t);
-    void (*expose)(pugl_handle_t, struct nk_context*);
+    nk_pugl_handle handle;
+    intptr_t parent;
+    void (*close)(nk_pugl_handle);
+    void (*expose)(nk_pugl_handle, struct nk_context*);
 } nk_pugl;
 
-NK_API void     nk_pugl_init (nk_pugl*);
-NK_API void     nk_pugl_destroy (nk_pugl*);
+NK_API void nk_pugl_init (nk_pugl*);
+NK_API void nk_pugl_destroy (nk_pugl*);
+NK_API void nk_pugl_wait_for_event (nk_pugl* self);
 
-#endif
 /*
  * ==============================================================
  *
@@ -96,7 +97,7 @@ nk_timestamp(void)
 NK_INTERN void
 nk_pugl_device_upload_atlas (nk_pugl* pugl, const void *image, int width, int height)
 {
-    pugl_device_t *dev = &pugl->dev;
+    nk_pugl_device *dev = &pugl->dev;
     glGenTextures(1, &dev->font_tex);
     glBindTexture(GL_TEXTURE_2D, dev->font_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -136,7 +137,7 @@ NK_INTERN void
 nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_buffer)
 {
     nk_pugl* pugl = (nk_pugl*) puglGetHandle (view);
-    pugl_device_t *dev = &pugl->dev;
+    nk_pugl_device *dev = &pugl->dev;
 
     glClear (GL_COLOR_BUFFER_BIT);
     glClearColor (0.1f, 0.18f, 0.24f, 1.0f);
@@ -145,10 +146,10 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
     nk_pugl_render_begin (pugl->width, pugl->height);
     
     {
-        GLsizei vs = sizeof(struct nk_pugl_vertex);
-        size_t vp = offsetof(struct nk_pugl_vertex, position);
-        size_t vt = offsetof(struct nk_pugl_vertex, uv);
-        size_t vc = offsetof(struct nk_pugl_vertex, col);
+        GLsizei vs = sizeof(nk_pugl_vertex);
+        size_t vp = offsetof(nk_pugl_vertex, position);
+        size_t vt = offsetof(nk_pugl_vertex, uv);
+        size_t vc = offsetof(nk_pugl_vertex, col);
 
         /* convert from command queue into draw list and draw to screen */
         const struct nk_draw_command *cmd;
@@ -157,15 +158,15 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
         /* fill convert configuration */
         struct nk_convert_config config;
         static const struct nk_draw_vertex_layout_element vertex_layout[] = {
-            {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_pugl_vertex, position)},
-            {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_pugl_vertex, uv)},
-            {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(struct nk_pugl_vertex, col)},
+            {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(nk_pugl_vertex, position)},
+            {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(nk_pugl_vertex, uv)},
+            {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(nk_pugl_vertex, col)},
             {NK_VERTEX_LAYOUT_END}
         };
         NK_MEMSET(&config, 0, sizeof(config));
         config.vertex_layout = vertex_layout;
-        config.vertex_size = sizeof(pugl_vertex_t);
-        config.vertex_alignment = NK_ALIGNOF(pugl_vertex_t);
+        config.vertex_size = sizeof(nk_pugl_vertex);
+        config.vertex_alignment = NK_ALIGNOF(nk_pugl_vertex);
         config.null = dev->null;
         config.circle_segment_count = 22;
         config.curve_segment_count = 22;
@@ -327,6 +328,24 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
     }
 }
 
+NK_INTERN void
+nk_pugl_font_stash_begin(nk_pugl *pugl)
+{
+    nk_font_atlas_init_default(&pugl->atlas);
+    nk_font_atlas_begin(&pugl->atlas);
+}
+
+NK_INTERN void
+nk_pugl_font_stash_end(nk_pugl *pugl)
+{
+    const void *image; int w, h;
+    image = nk_font_atlas_bake(&pugl->atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
+    nk_pugl_device_upload_atlas(pugl, image, w, h);
+    nk_font_atlas_end(&pugl->atlas, nk_handle_id((int)pugl->dev.font_tex), &pugl->dev.null);
+    if (pugl->atlas.default_font)
+        nk_style_set_font(&pugl->ctx, &pugl->atlas.default_font->handle);
+}
+
 //=============================================================================
 
 NK_API void
@@ -334,7 +353,7 @@ nk_pugl_init (nk_pugl* self)
 {
     nk_init_default (&self->ctx, 0);
 
-    pugl_device_t* dev = &self->dev;
+    nk_pugl_device* dev = &self->dev;
     nk_buffer_init_default (&dev->cmds);
     nk_buffer_init_default (&dev->vbuf);
     nk_buffer_init_default (&dev->ebuf);
@@ -360,17 +379,46 @@ nk_pugl_init (nk_pugl* self)
 
     puglSetEventFunc (self->view, nk_pugl_event_handler);
     puglSetHandle (self->view, self);
+
+    if (self->parent) {
+        puglInitWindowParent (self->view, (PuglNativeWindow) self->parent);   
+    }
+
+    if (puglCreateWindow (self->view, "") == 0)
+    {
+        // struct nk_font_atlas *atlas = &app.atlas;
+        nk_pugl_font_stash_begin (self);
+        /*struct nk_font *droid = nk_font_atlas_add_from_file(atlas, "../../../extra_font/DroidSans.ttf", 14, 0);*/
+        /*struct nk_font *roboto = nk_font_atlas_add_from_file(atlas, "../../../extra_font/Roboto-Regular.ttf", 14, 0);*/
+        /*struct nk_font *future = nk_font_atlas_add_from_file(atlas, "../../../extra_font/kenvector_future_thin.ttf", 13, 0);*/
+        /*struct nk_font *clean = nk_font_atlas_add_from_file(atlas, "../../../extra_font/ProggyClean.ttf", 12, 0);*/
+        /*struct nk_font *tiny = nk_font_atlas_add_from_file(atlas, "../../../extra_font/ProggyTiny.ttf", 10, 0);*/
+        /*struct nk_font *cousine = nk_font_atlas_add_from_file(atlas, "../../../extra_font/Cousine-Regular.ttf", 13, 0);*/
+        nk_pugl_font_stash_end (self);
+        /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
+        /*nk_style_set_font(ctx, &droid->handle);*/
+    }
+    else
+    {
+        assert(false); // couldn't create window
+    }
 }
 
 NK_API void
 nk_pugl_destroy (nk_pugl* self)
 {
     puglDestroy (self->view);
-    pugl_device_t* dev = &self->dev;
+    nk_pugl_device* dev = &self->dev;
     nk_buffer_free (&dev->cmds);
     nk_buffer_free (&dev->ebuf);
     nk_buffer_free (&dev->vbuf);
     nk_free (&self->ctx);
+}
+
+NK_API intptr_t
+nk_pugl_native_window (nk_pugl* self)
+{
+    return puglGetNativeWindow (self->view);
 }
 
 NK_API void
@@ -387,25 +435,9 @@ nk_pugl_process_events (nk_pugl* self)
     nk_input_end (&self->ctx);
 }
 
-NK_API void
-nk_pugl_font_stash_begin(nk_pugl *pugl)
-{
-    nk_font_atlas_init_default(&pugl->atlas);
-    nk_font_atlas_begin(&pugl->atlas);
-}
-
-NK_API void
-nk_pugl_font_stash_end(nk_pugl *pugl)
-{
-    const void *image; int w, h;
-    image = nk_font_atlas_bake(&pugl->atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
-    nk_pugl_device_upload_atlas(pugl, image, w, h);
-    nk_font_atlas_end(&pugl->atlas, nk_handle_id((int)pugl->dev.font_tex), &pugl->dev.null);
-    if (pugl->atlas.default_font)
-        nk_style_set_font(&pugl->ctx, &pugl->atlas.default_font->handle);
-}
-
 #ifdef __cpluspus
   }
+#endif
+
 #endif
 #endif
