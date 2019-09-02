@@ -19,7 +19,7 @@
 #include "pugl/pugl.h"
 #include "pugl/pugl_gl_backend.h"
 
-#ifdef _cplusplus
+#ifdef __cplusplus
   extern "C" {
 #endif
 
@@ -53,7 +53,7 @@ typedef struct _nk_pugl {
     nk_pugl_handle handle;
     intptr_t parent;
     void (*close)(nk_pugl_handle);
-    void (*expose)(nk_pugl_handle, struct nk_context*);
+    void (*expose)(nk_pugl_handle);
 } nk_pugl;
 
 NK_API void nk_pugl_init (nk_pugl*);
@@ -158,10 +158,10 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
         /* fill convert configuration */
         struct nk_convert_config config;
         static const struct nk_draw_vertex_layout_element vertex_layout[] = {
-            {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(nk_pugl_vertex, position)},
-            {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(nk_pugl_vertex, uv)},
-            {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(nk_pugl_vertex, col)},
-            {NK_VERTEX_LAYOUT_END}
+            { NK_VERTEX_POSITION, NK_FORMAT_FLOAT,    NK_OFFSETOF (nk_pugl_vertex, position) },
+            { NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT,    NK_OFFSETOF (nk_pugl_vertex, uv) },
+            { NK_VERTEX_COLOR,    NK_FORMAT_R8G8B8A8, NK_OFFSETOF (nk_pugl_vertex, col) },
+            { NK_VERTEX_LAYOUT_END }
         };
         NK_MEMSET(&config, 0, sizeof(config));
         config.vertex_layout = vertex_layout;
@@ -177,33 +177,35 @@ nk_pugl_render(PuglView* view, enum nk_anti_aliasing AA, int max_vertex_buffer, 
 
         /* convert shapes into vertexes */
         // clear command/vertex buffers of last stable view
-		nk_buffer_clear(&dev->cmds);
-		nk_buffer_clear(&dev->vbuf);
-		nk_buffer_clear(&dev->ebuf);
-        nk_convert(&pugl->ctx, &dev->cmds, &dev->vbuf, &dev->ebuf, &config);
+		nk_buffer_clear (&dev->cmds);
+		nk_buffer_clear (&dev->vbuf);
+		nk_buffer_clear (&dev->ebuf);
+        nk_convert (&pugl->ctx, &dev->cmds, &dev->vbuf, &dev->ebuf, &config);
 
         /* setup vertex buffer pointer */
-        {const void *vertices = nk_buffer_memory_const(&dev->vbuf);
-        glVertexPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vp));
-        glTexCoordPointer(2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vt));
-        glColorPointer(4, GL_UNSIGNED_BYTE, vs, (const void*)((const nk_byte*)vertices + vc));}
+        {
+            const void *vertices = nk_buffer_memory_const (&dev->vbuf);
+            glVertexPointer (2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vp));
+            glTexCoordPointer (2, GL_FLOAT, vs, (const void*)((const nk_byte*)vertices + vt));
+            glColorPointer (4, GL_UNSIGNED_BYTE, vs, (const void*)((const nk_byte*)vertices + vc));
+        }
 
         /* iterate over and execute each draw command */
         offset = (const nk_draw_index*) nk_buffer_memory_const (&dev->ebuf);
-        nk_draw_foreach(cmd, &pugl->ctx, &dev->cmds)
+        nk_draw_foreach (cmd, &pugl->ctx, &dev->cmds)
         {
             if (! cmd->elem_count) 
                 continue;
-            glBindTexture(GL_TEXTURE_2D, (GLuint)cmd->texture.id);
-            glScissor(
+            glBindTexture (GL_TEXTURE_2D, (GLuint) cmd->texture.id);
+            glScissor (
                 (GLint)(cmd->clip_rect.x),
                 (GLint)((pugl->height - (GLint)(cmd->clip_rect.y + cmd->clip_rect.h))),
                 (GLint)(cmd->clip_rect.w),
                 (GLint)(cmd->clip_rect.h));
-            glDrawElements(GL_TRIANGLES, (GLsizei)cmd->elem_count, GL_UNSIGNED_SHORT, offset);
+            glDrawElements (GL_TRIANGLES, (GLsizei)cmd->elem_count, GL_UNSIGNED_SHORT, offset);
             offset += cmd->elem_count;
         }
-        nk_clear(&pugl->ctx);
+        nk_clear (&pugl->ctx);
     }
 
     /* default OpenGL state */
@@ -282,7 +284,7 @@ nk_pugl_event_handler (PuglView* view, const PuglEvent* event)
             nk_input_end (&pugl->ctx);
 
             if (pugl->expose) {
-                pugl->expose (pugl->handle, &pugl->ctx);
+                pugl->expose (pugl->handle);
             }
 
             nk_pugl_render (pugl->view, NK_ANTI_ALIASING_ON, 
@@ -435,9 +437,98 @@ nk_pugl_process_events (nk_pugl* self)
     nk_input_end (&self->ctx);
 }
 
-#ifdef __cpluspus
-  }
-#endif
+#ifdef __cplusplus
+  } /* exern c */
 
-#endif
-#endif
+namespace nk {
+
+// class context {
+// public:
+//     using nk_type = struct nk_context;
+
+//     context (nk_type* ctx) { _ptr = ctx; }
+//     context (const context& o) { operator= (o); }
+//     context& operator= (const context& o) {
+//         this->_ptr = o._ptr;
+//         return *this;
+//     }
+
+//     inline operator nk_type*() { return _ptr; }
+//     void input_begin() const { nk_input_begin (_ptr); }
+//     void input_end()   const { nk_input_begin (_ptr); }
+    
+// private:
+//     struct nk_context* _ptr = nullptr;
+// };
+
+template<class B>
+class backend {
+public:
+    using backend_type = B;
+
+    backend() {
+        std::memset (&_obj, 0, sizeof (B));
+    }
+
+    virtual ~backend() = default;
+
+    inline operator B*()                { return &_obj; }
+    inline B* get()                     { return &_obj; }
+    inline const B* get() const         { return &_obj; }
+    inline B* operator->()              { return &_obj; }
+    inline const B* operator->() const  { return &_obj; }
+
+private:
+    B _obj;
+};
+
+class pugl : public backend<nk_pugl> { 
+public:
+    pugl() = default;
+    ~pugl() { reset(); }
+
+    void init() {
+        if (_ready) 
+            return;
+        nk_pugl_init (get());
+    }
+
+    void reset() {
+        input_end();
+        if (! _ready)
+            return;
+        _ready = false;       
+        nk_pugl_destroy (get());
+        memset (get(), 0, sizeof (backend_type));
+    }
+
+    bool ready() const  { return _ready; }
+    int  width() const  { return get()->width; }
+    int  height() const { return get()->height; }
+
+    void process_events() { nk_pugl_process_events (*this); }
+    
+    void input_begin() {
+        if (! _inputting) {
+            nk_input_begin (&get()->ctx); 
+            _inputting = true;
+        }
+    }
+    
+    void input_end() { 
+        if (_inputting) {
+            nk_input_end (&get()->ctx);
+            _inputting = false;
+        }
+    }
+
+private:
+    bool _ready = false;
+    bool _inputting = false;
+};
+
+}
+
+#endif // cplusplus
+#endif // impl
+#endif // guard
