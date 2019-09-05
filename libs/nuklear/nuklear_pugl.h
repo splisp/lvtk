@@ -432,9 +432,13 @@ nk_pugl_wait_for_event (nk_pugl* self)
 NK_API void
 nk_pugl_process_events (nk_pugl* self)
 {
-    nk_input_begin (&self->ctx);
     puglProcessEvents (self->view);
-    nk_input_end (&self->ctx);
+}
+
+NK_API void
+nk_pugl_post_redisplay (nk_pugl* self)
+{
+    puglPostRedisplay (self->view);
 }
 
 #ifdef __cplusplus

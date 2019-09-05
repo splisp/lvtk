@@ -47,9 +47,14 @@ public:
     }
 
     void port_event (uint32_t port, uint32_t size, uint32_t protocol, const void* data) {
+        bool changed = true;
         if (port == 4 && protocol == 0) {
             value = *(const float*) data;
+        } else {
+            changed = false;
         }
+        if (changed)
+            nk_pugl_post_redisplay (nuke);
     }
 
     void expose() {
