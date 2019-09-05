@@ -510,8 +510,9 @@ public:
     int  width() const  { return get()->width; }
     int  height() const { return get()->height; }
 
-    void process_events() { nk_pugl_process_events (*this); }
-    
+    void process_events() { nk_pugl_process_events (get()); }
+    void post_redisplay() { nk_pugl_post_redisplay (get()); }
+
     void input_begin() {
         if (! _inputting) {
             nk_input_begin (&get()->ctx); 

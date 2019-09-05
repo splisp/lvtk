@@ -54,7 +54,7 @@ public:
             changed = false;
         }
         if (changed)
-            nk_pugl_post_redisplay (nuke);
+            nuke.post_redisplay();
     }
 
     void expose() {
