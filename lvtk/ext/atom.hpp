@@ -526,7 +526,7 @@ struct Forge final : LV2_Atom_Forge
         @return An Atom
     */
     inline ForgeRef write_path (const std::string& path) {
-        return lv2_atom_forge_path (this, path.c_str(), path.size());
+        return lv2_atom_forge_path (this, path.c_str(), static_cast<uint32_t>(path.size()));
     }
 
     inline ForgeRef write_primitive (const Atom& atom) {
@@ -569,12 +569,12 @@ struct Forge final : LV2_Atom_Forge
 
     /** Write a string value */
     inline ForgeRef write_string (const char* str) { 
-        return lv2_atom_forge_string (this, str, strlen (str)); 
+        return lv2_atom_forge_string (this, str, static_cast<uint32_t>(strlen(str))); 
     }
 
     /** Write a URI string */
     inline ForgeRef write_uri (const char* uri) { 
-        return lv2_atom_forge_uri (this, uri, strlen (uri)); 
+        return lv2_atom_forge_uri (this, uri, static_cast<uint32_t>(strlen(uri))); 
     }
 
     /** Write raw data
@@ -637,7 +637,7 @@ struct Vector final
         }
 
     private:
-        friend class Vector;
+        friend struct Vector;
         iterator (LV2_Atom_Vector *v, uint32_t os = 0) : vec (v), offset (os) { }
         LV2_Atom_Vector* vec = nullptr;
         uint32_t offset = 0;
