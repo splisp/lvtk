@@ -343,14 +343,14 @@ struct Sequence final
     /** Return the sequence's c-type */
     inline LV2_Atom_Sequence* c_obj()   { return sequence; }
 
+    /** Return the sequence's buffer */
+    inline uint8_t* c_buf()             { return reinterpret_cast<uint8_t*>(sequence); }
+
     /** Castable to bool. True if the sequence isn't nullptr */
     inline operator bool() const        { return sequence != 0; }
 
     /** Castable to LV2_Atom_Sequence */
     inline operator LV2_Atom_Sequence*() const { return sequence; }
-
-    /** @private */
-    inline operator uint8_t*() const    { return (uint8_t*) sequence; }
 
     /** Append an AtomEvent to the end of the sequence.
 
@@ -575,6 +575,16 @@ struct Forge final : LV2_Atom_Forge
     /** Write a URI string */
     inline ForgeRef write_uri (const char* uri) { 
         return lv2_atom_forge_uri (this, uri, static_cast<uint32_t>(strlen(uri))); 
+    }
+
+    /** Write a complete atom:Vector
+        @param child_size  The size of each element
+        @param child_type  The urid of each element
+        @param n_elems     The number of elements
+        @param elems       The elements of the vector
+     */
+    inline ForgeRef write_vector (uint32_t child_size, uint32_t child_type, uint32_t n_elems, const void* elems) {
+        return lv2_atom_forge_vector (this, child_size, child_type, n_elems, elems);
     }
 
     /** Write raw data
